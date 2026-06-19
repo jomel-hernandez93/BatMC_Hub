@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medication Pill Calculator & Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .calculator-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            text-align: center;
+        }
+        h3 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4fd;
+            border-left: 5px solid #3498db;
+            border-radius: 4px;
+            display: none;
+        }
+        .result-text {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin: 5px 0;
+        }
+        .pills-count {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .end-date {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        /* Calendar Styling */
+        .calendar-container {
+            margin-top: 25px;
+            display: none;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+        }
+        .calendar-day-head {
+            font-weight: bold;
+            color: #7f8c8d;
+            font-size: 0.8em;
+            padding: 5px 0;
+        }
+        .calendar-day {
+            padding: 10px 0;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #ccc;
+            position: relative;
+        }
+        .day-has-pill {
+            background-color: #d4edda;
+            color: #155724;
+            font-weight: 500;
+        }
+        .day-is-today {
+            border: 2px solid #3498db;
+        }
+        .day-last-pill {
+            background-color: #e74c3c !important;
+            color: white !important;
+            font-weight: bold;
+        }
+        .day-empty {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .calendar-month-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 15px 0 5px 0;
+            font-size: 1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-card">
+    <h2>Pill Tracker & Calendar</h2>
+    
+    <div class="form-group">
+        <label for="checkupDate">Date of Last Check-up:</label>
+        <input type="date" id="checkupDate">
+    </div>
+
+    <div class="form-group">
+        <label for="pillsLeftBefore">Pills left *before* the new supply:</label>
+        <input type="number" id="pillsLeftBefore" min="0" placeholder="e.g., 22">
+    </div>
+
+    <div class="form-group">
+        <label for="bottlesProvided">Number of new bottles provided:</label>
+        <input type="number" id="bottlesProvided" min="0" placeholder="e.g., 1">
+    </div>
+
+    <div class="form-group">
+        <label for="pillsPerBottle">Pills per bottle:</label>
+        <input type="number" id="pillsPerBottle" min="1" placeholder="e.g., 30">
+    </div>
+
+    <div class="form-group">
+        <label for="calculationDate">Date of Computation (Today):</label>
+        <input type="date" id="calculationDate">
+    </div>
+
+    <button onclick="calculatePills()">Calculate & Generate Calendar</button>
+
+    <div class="result-box" id="resultBox">
+        <p class="result-text">Days passed since check-up: <span id="daysPassed" style="font-weight:bold;">0</span></p>
+        <p class="result-text">Estimated pills left today: <span class="pills-count" id="pillsRemaining">0</span></p>
+        <p class="result-text">Your pills will last until: <span class="end-date" id="endDateText">--</span></p>
+    </div>
+
+    <div class="calendar-container" id="calendarContainer">
+        <h3>Visual Pill Timeline</h3>
+        <div id="calendarMonths"></div>
+    </div>
+</div>
+
+<script>
+    // Automatically set the "Date of Computation" to today's date on load
+    document.getElementById('calculationDate').valueAsDate = new Date();
+
+    function calculatePills() {
+        const checkupDateStr = document.getElementById('checkupDate').value;
+        const calculationDateStr = document.getElementById('calculationDate').value;
+        const pillsLeftBeforeInput = document.getElementById('pillsLeftBefore').value;
+        const bottlesProvidedInput = document.getElementById('bottlesProvided').value;
+        const pillsPerBottleInput = document.getElementById('pillsPerBottle').value;
+
+        // Validation checking to ensure user inputs all values
+        if (!checkupDateStr || !calculationDateStr || pillsLeftBeforeInput === "" || bottlesProvidedInput === "" || !pillsPerBottleInput) {
+            alert("Please fill in all date and pill fields before calculating.");
+            return;
+        }
+
+        const pillsLeftBefore = parseInt(pillsLeftBeforeInput) || 0;
+        const bottlesProvided = parseInt(bottlesProvidedInput) || 0;
+        const pillsPerBottle = parseInt(pillsPerBottleInput) || 30;
+
+        const checkupDate = new Date(checkupDateStr + "T00:00:00");
+        const calculationDate = new Date(calculationDateStr + "T00:00:00");
+
+        const timeDiff = calculationDate - checkupDate;
+        const daysPassed = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+        if (daysPassed < 0) {
+            alert("The calculation date cannot be before the check-up date!");
+            return;
+        }
+
+        const totalStartingPills = pillsLeftBefore + (bottlesProvided * pillsPerBottle);
+        const pillsRemaining = totalStartingPills - daysPassed;
+
+        const depletionDate = new Date(checkupDate);
+        depletionDate.setDate(checkupDate.getDate() + totalStartingPills - 1);
+
+        document.getElementById('daysPassed').innerText = daysPassed;
+        const remainingElement = document.getElementById('pillsRemaining');
+        if (pillsRemaining < 0) {
+            remainingElement.innerText = "0 (Ran out " + Math.abs(pillsRemaining) + " day(s) ago)";
+        } else {
+            remainingElement.innerText = pillsRemaining;
+        }
+        
+        const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+        document.getElementById('endDateText').innerText = depletionDate.toLocaleDateString('en-US', options);
+        document.getElementById('resultBox').style.display = 'block';
+
+        generateVisualCalendar(checkupDate, depletionDate, calculationDate);
+    }
+
+    function generateVisualCalendar(startDate, endDate, todayDate) {
+        const monthsContainer = document.getElementById('calendarMonths');
+        monthsContainer.innerHTML = ''; 
+
+        let currentIterDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        const calendarEndLimit = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+
+        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+        while (currentIterDate <= calendarEndLimit) {
+            const year = currentIterDate.getFullYear();
+            const month = currentIterDate.getMonth();
+            
+            const monthWrapper = document.createElement('div');
+            
+            const monthTitle = document.createElement('div');
+            monthTitle.className = 'calendar-month-title';
+            monthTitle.innerText = currentIterDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            monthWrapper.appendChild(monthTitle);
+
+            const grid = document.createElement('div');
+            grid.className = 'calendar-grid';
+
+            dayNames.forEach(name => {
+                const head = document.createElement('div');
+                head.className = 'calendar-day-head';
+                head.innerText = name;
+                grid.appendChild(head);
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDayIndex; i++) {
+                const blank = document.createElement('div');
+                grid.appendChild(blank);
+            }
+
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dateObj = new Date(year, month, day);
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                dayDiv.innerText = day;
+
+                const dateStr = dateObj.toDateString();
+                const startStr = startDate.toDateString();
+                const endStr = endDate.toDateString();
+                const todayStr = todayDate.toDateString();
+
+                if (dateObj >= startDate && dateObj <= endDate) {
+                    dayDiv.classList.add('day-has-pill');
+                    
+                    if (dateStr === endStr) {
+                        dayDiv.classList.add('day-last-pill');
+                    }
+                } else if (dateObj > endDate) {
+                    dayDiv.classList.add('day-empty');
+                }
+
+                if (dateStr === todayStr) {
+                    dayDiv.classList.add('day-is-today');
+                }
+
+                grid.appendChild(dayDiv);
+            }
+
+            monthWrapper.appendChild(grid);
+            monthsContainer.appendChild(monthWrapper);
+
+            currentIterDate.setMonth(currentIterDate.getMonth() + 1);
+        }
+
+        document.getElementById('calendarContainer').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
